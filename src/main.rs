@@ -1,4 +1,4 @@
-std::collections::HashMap;
+use std::collections::HashMap;
 
 enum Literal {
     B(bool)
@@ -14,7 +14,7 @@ enum Premise {
 }
 
 struct Line {
-    lineNumber: i32,
+    line_number: i32,
     claim: VarName,
     justification: String,
     proven: bool,
