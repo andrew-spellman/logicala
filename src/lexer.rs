@@ -70,7 +70,7 @@ impl ProofOperator {
 }
 
 #[derive(Debug)]
-enum ClaimToken {
+enum ClaimTokenType {
     Literal(Literal),
     Operator(ProofOperator),
     LeftParentheses,
@@ -78,70 +78,93 @@ enum ClaimToken {
 }
 
 #[derive(Debug)]
-struct ClaimTokenWithLocation {
-    token: ClaimToken,
+struct ClaimToken {
+    token: ClaimTokenType,
     start: usize,
+    end: usize,
 }
 
-struct ClaimConsumable {
-    claim: String,
-    index: usize,
-}
-
-impl ClaimConsumable {
-    fn get_next(&self) -> Option<char> {
-        if self.index < self.claim.len() - 1 {
-            return Some(self.claim.chars().nth(self.index).unwrap());
+impl ClaimToken {
+    fn new_literal(literal: Literal, start: usize, end: usize) -> Self {
+        Self {
+            token: ClaimTokenType::Literal(literal),
+            start,
+            end,
         }
-        None
     }
 
-    fn consume(&mut self) {
-        if self.index >= self.claim.len() {
-            panic!("attempted to next claim char after last char already consumed");
+    fn new_operator(operator: Operator, start: usize, end: usize) -> Self {
+        Self {
+            token: ClaimTokenType::Operator(operator),
+            start,
+            end,
         }
-        self.index += 1;
     }
 }
 
-fn tokenize_claim_integer(claim: &mut ClaimConsumable) -> ClaimTokenWithLocation {
-    let start = claim.index;
+fn tokenize_integer(steam: &mut InputSteam) -> ClaimToken {
+    // TODO handle negative numbers
+    let start = steam.char_index;
     loop {
-        let next = claim.get_next();
+        let next = claim.peek();
         if next.is_none() || !next.unwrap().is_digit(10) {
-            let end = claim.index;
+            let end = claim.char_index;
             if start == end {
-                panic!("next char after tokenizer_claim_integer call was not an integer");
+                panic!("next char after tokenizer_integer call was not an integer");
             }
-            let slice = &claim.claim[start..end];
+            let slice = &stream.current_string[start..end];
             let z = slice.parse::<i32>().unwrap();
-            return ClaimTokenWithLocation {
-                token: ClaimToken::Literal(Literal::Z(z)),
-                start,
-            };
+            return ClaimToken::new_literal(Literal::Z(z), start, end);
         }
-        claim.consume();
+        claim.advanced();
     }
 }
 
-fn tokenize_claim_operator(claim: &mut ClaimConsumable) -> ClaimTokenWithLocation {}
-
-fn tokenize_claim_operator(claim: &mut ClaimConsumable) -> ClaimTokenWithLocation {}
+fn tokenize_operator(steam: &mut InputSteam) -> ClaimToken {
+    let start = steam.char_index;
+    let first = steam.peek();
+    steam.advance();
+    let second = steam.peek();
+    ClaimToken::new_operator(
+        match (first, second) {
+            ('∨', _) => Operator::Or,
+            ('∧', _) => Operator::And,
+            ('^', _) => Operator::Less,
+            ('<', '=') => Operator::LessEquals,
+            ('<', _) => Operator::Greater,
+            ('>', '=') => Operator::GreaterEquals,
+            ('=', '=') => Operator::Equals,
+            ('=', _) => panic!("assignement is not an operator"),
+            ('!', '=') => Operator(Operator::NotEquals),
+            ('!', _) => Operator(Operator::Not),
+            ('+', _) => Operator(Operator::Plus),
+            ('-', _) => Operator(Operator::Minus),
+            ('*', _) => Operator(Operator::Multiply),
+            ('/', _) => Operator(Operator::Divide),
+            ('%', _) => Operator(Operator::Modulus),
+            ('-', _) => Operator(Operator::Negate),
+            _ => panic!("next char after tokenize_operator was not an operator"),
+        },
+        start,
+        end,
+    )
+}
 
 fn tokenize_claim(expression: &str) -> Vec<ClaimToken> {
-    // all needs to be reimplemented to support multi-character tokens
+    let stream = InputSteam::new();
     let mut tokens = Vec::new();
-    for c in expression.chars() {
+    loop {
         match c {
             ' ' => (),
             '(' => tokens.push(ClaimToken::LeftParentheses),
             ')' => tokens.push(ClaimToken::RightParentheses),
-            '∨' => tokens.push(ClaimToken::Operator(ProofOperator::Or)),
-            '∧' => tokens.push(ClaimToken::Operator(ProofOperator::And)),
-            '+' => tokens.push(ClaimToken::Operator(ProofOperator::Plus)),
-            '-' => tokens.push(ClaimToken::Operator(ProofOperator::Minus)),
-            '*' => tokens.push(ClaimToken::Operator(ProofOperator::Multiply)),
-            '/' => tokens.push(ClaimToken::Operator(ProofOperator::Divide)),
+            '∨' => tokenize_operator(&mut stream),
+            '∧' => tokenize_operator(&mut stream),
+            '^' => tokenize_operator(&mut stream),
+            '+' => tokenize_operator(&mut stream),
+            '-' => tokenize_operator(&mut stream),
+            '*' => tokenize_operator(&mut stream),
+            '/' => tokenize_operator(&mut stream),
             // this assumes all numbers are single digit and base 10
             _ => tokens.push(ClaimToken::Literal(Literal::Z(
                 c.to_digit(10).unwrap() as i32
