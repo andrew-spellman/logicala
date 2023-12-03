@@ -25,7 +25,7 @@ impl InputStream {
         self.current_line.chars().nth(self.char_index)
     }
 
-    // returns false if at end of file
+    // returns true if at end of file
     pub fn advance(&mut self) -> bool {
         let current_char = self.peek();
         self.char_index += 1;
