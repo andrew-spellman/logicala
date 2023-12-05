@@ -123,8 +123,7 @@ fn tokenize_integer(reader: &mut RepeatsNoWhiteSpace) -> ClaimToken {
 
 fn tokenize_operator(reader: &mut RepeatsNoWhiteSpace) -> ClaimToken {
     let start = reader.char_index;
-    let first = reader.get();
-    let _ = reader.next();
+    let first = reader.next();
     let second = reader.get();
     ClaimToken::new_operator(
         match (first, second) {
