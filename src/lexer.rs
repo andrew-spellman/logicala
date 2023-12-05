@@ -112,7 +112,7 @@ fn tokenize_integer(steam: &mut InputSteam) -> ClaimToken {
             if start == end {
                 panic!("next char after tokenizer_integer call was not an integer");
             }
-            let slice = &stream.current_string[start..end];
+            let slice = &stream.current_line[start..end];
             let z = slice.parse::<i32>().unwrap();
             return ClaimToken::new_literal(Literal::Z(z), start, end);
         }
@@ -150,7 +150,7 @@ fn tokenize_operator(steam: &mut InputSteam) -> ClaimToken {
     )
 }
 
-fn tokenize_claim(expression: &str) -> Vec<ClaimToken> {
+fn tokenize_claim(claim: &str) -> Vec<ClaimToken> {
     let stream = InputSteam::new();
     let mut tokens = Vec::new();
     loop {
@@ -220,3 +220,12 @@ fn infix_to_posfix(tokens: Vec<ClaimToken>) -> Vec<ClaimToken> {
     }
     posfix
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test() {}
+}
+
