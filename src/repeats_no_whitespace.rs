@@ -2,12 +2,12 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
-struct RepeatsNoWhiteSpace {
+pub struct RepeatsNoWhiteSpace {
     reader: BufReader<File>,
-    current_line: String,
+    pub current_line: String,
     current_chars: Vec<char>,
-    line_number: usize,
-    char_index: usize,
+    pub line_number: usize,
+    pub char_index: usize,
 }
 
 impl RepeatsNoWhiteSpace {
@@ -26,14 +26,17 @@ impl RepeatsNoWhiteSpace {
         new_self
     }
 
-    pub fn get(&self) -> Option<&char> {
-        self.current_chars.get(self.char_index)
+    pub fn get(&self) -> Option<char> {
+        match self.current_chars.get(self.char_index) {
+            None => None,
+            Some(c) => Some(*c),
+        }
     }
 
-    pub fn take(&mut self) -> Option<char> {
+    fn take(&mut self) -> Option<char> {
         let taken = match self.get() {
             None => return None,
-            Some(c) => Some(*c),
+            Some(c) => Some(c),
         };
         self.char_index += 1;
         taken
@@ -110,13 +113,13 @@ mod tests {
         let path = "/tmp/foo1";
         let file = test_file_from_str(&path, "bar");
         let mut stream = RepeatsNoWhiteSpace::new(file);
-        assert_eq!(stream.get(), Some(&'b'));
+        assert_eq!(stream.get(), Some('b'));
         assert_eq!(stream.next(), Some('b'));
 
-        assert_eq!(stream.get(), Some(&'a'));
+        assert_eq!(stream.get(), Some('a'));
         assert_eq!(stream.next(), Some('a'));
 
-        assert_eq!(stream.get(), Some(&'r'));
+        assert_eq!(stream.get(), Some('r'));
         assert_eq!(stream.next(), Some('r'));
 
         assert_eq!(stream.get(), None);
@@ -129,16 +132,16 @@ mod tests {
         let path = "/tmp/foo2";
         let file = test_file_from_str(&path, "b   ar");
         let mut stream = RepeatsNoWhiteSpace::new(file);
-        assert_eq!(stream.get(), Some(&'b'));
+        assert_eq!(stream.get(), Some('b'));
         assert_eq!(stream.next(), Some('b'));
 
-        assert_eq!(stream.get(), Some(&' '));
+        assert_eq!(stream.get(), Some(' '));
         assert_eq!(stream.next(), Some(' '));
 
-        assert_eq!(stream.get(), Some(&'a'));
+        assert_eq!(stream.get(), Some('a'));
         assert_eq!(stream.next(), Some('a'));
 
-        assert_eq!(stream.get(), Some(&'r'));
+        assert_eq!(stream.get(), Some('r'));
         assert_eq!(stream.next(), Some('r'));
 
         assert_eq!(stream.get(), None);
@@ -151,16 +154,16 @@ mod tests {
         let path = "/tmp/foo3";
         let file = test_file_from_str(&path, "b\n\n\nar");
         let mut stream = RepeatsNoWhiteSpace::new(file);
-        assert_eq!(stream.get(), Some(&'b'));
+        assert_eq!(stream.get(), Some('b'));
         assert_eq!(stream.next(), Some('b'));
 
-        assert_eq!(stream.get(), Some(&'\n'));
+        assert_eq!(stream.get(), Some('\n'));
         assert_eq!(stream.next(), Some('\n'));
 
-        assert_eq!(stream.get(), Some(&'a'));
+        assert_eq!(stream.get(), Some('a'));
         assert_eq!(stream.next(), Some('a'));
 
-        assert_eq!(stream.get(), Some(&'r'));
+        assert_eq!(stream.get(), Some('r'));
         assert_eq!(stream.next(), Some('r'));
 
         assert_eq!(stream.get(), None);

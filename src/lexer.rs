@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use crate::repeats_no_whitespace::*;
 use std::cmp::Ordering;
 
 #[derive(Debug)]
@@ -10,7 +11,7 @@ enum Literal {
 
 // https://logika.v3.sireum.org/doc/03-language/basic/index.html#operators-and-literals
 #[derive(Debug)]
-enum ProofOperator {
+enum Operator {
     Or,
     And,
     Less,
@@ -29,9 +30,9 @@ enum ProofOperator {
     Negate,
 }
 
-impl ProofOperator {
+impl Operator {
     const fn precedence(&self) -> usize {
-        use ProofOperator::*;
+        use Operator::*;
         match self {
             Or => 0,
             And => 1,
@@ -72,7 +73,7 @@ impl ProofOperator {
 #[derive(Debug)]
 enum ClaimTokenType {
     Literal(Literal),
-    Operator(ProofOperator),
+    Operator(Operator),
     LeftParentheses,
     RightParentheses,
 }
@@ -102,47 +103,47 @@ impl ClaimToken {
     }
 }
 
-fn tokenize_integer(steam: &mut InputSteam) -> ClaimToken {
+fn tokenize_integer(reader: &mut RepeatsNoWhiteSpace) -> ClaimToken {
     // TODO handle negative numbers
-    let start = steam.char_index;
+    let start = reader.char_index;
     loop {
-        let next = claim.peek();
+        let next = reader.get();
         if next.is_none() || !next.unwrap().is_digit(10) {
-            let end = claim.char_index;
+            let end = reader.char_index;
             if start == end {
                 panic!("next char after tokenizer_integer call was not an integer");
             }
-            let slice = &stream.current_line[start..end];
+            let slice = &reader.current_line[start..end];
             let z = slice.parse::<i32>().unwrap();
             return ClaimToken::new_literal(Literal::Z(z), start, end);
         }
-        claim.advanced();
+        let _ = reader.next();
     }
 }
 
-fn tokenize_operator(steam: &mut InputSteam) -> ClaimToken {
-    let start = steam.char_index;
-    let first = steam.peek();
-    steam.advance();
-    let second = steam.peek();
+fn tokenize_operator(reader: &mut RepeatsNoWhiteSpace) -> ClaimToken {
+    let start = reader.char_index;
+    let first = reader.get();
+    let _ = reader.next();
+    let second = reader.get();
     ClaimToken::new_operator(
         match (first, second) {
-            ('∨', _) => Operator::Or,
-            ('∧', _) => Operator::And,
-            ('^', _) => Operator::Less,
-            ('<', '=') => Operator::LessEquals,
-            ('<', _) => Operator::Greater,
-            ('>', '=') => Operator::GreaterEquals,
-            ('=', '=') => Operator::Equals,
-            ('=', _) => panic!("assignement is not an operator"),
-            ('!', '=') => Operator(Operator::NotEquals),
-            ('!', _) => Operator(Operator::Not),
-            ('+', _) => Operator(Operator::Plus),
-            ('-', _) => Operator(Operator::Minus),
-            ('*', _) => Operator(Operator::Multiply),
-            ('/', _) => Operator(Operator::Divide),
-            ('%', _) => Operator(Operator::Modulus),
-            ('-', _) => Operator(Operator::Negate),
+            (Some('∨'), _) => Operator::Or,
+            (Some('∧'), _) => Operator::And,
+            (Some('^'), _) => Operator::Less,
+            (Some('<'), Some('=')) => Operator::LessEquals,
+            (Some('<'), _) => Operator::Greater,
+            (Some('>'), Some('=')) => Operator::GreaterEquals,
+            (Some('='), Some('=')) => Operator::Equals,
+            (Some('='), _) => panic!("assignement is not an operator"),
+            (Some('!'), Some('=')) => Operator::NotEquals,
+            (Some('!'), _) => Operator::Not,
+            (Some('+'), _) => Operator::Plus,
+            (Some('-'), _) => Operator::Minus,
+            (Some('*'), _) => Operator::Multiply,
+            (Some('/'), _) => Operator::Divide,
+            (Some('%'), _) => Operator::Modulus,
+            (Some('-'), _) => Operator::Negate,
             _ => panic!("next char after tokenize_operator was not an operator"),
         },
         start,
@@ -228,4 +229,3 @@ mod tests {
     #[test]
     fn test() {}
 }
-
