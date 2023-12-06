@@ -92,7 +92,7 @@ enum TokenType {
 
 #[derive(Debug)]
 struct Token {
-    token: TokenType,
+    token_type: TokenType,
     start: usize,
     end: usize,
 }
@@ -100,7 +100,7 @@ struct Token {
 impl Token {
     fn new_literal(literal: Literal, start: usize, end: usize) -> Self {
         Self {
-            token: TokenType::Literal(literal),
+            token_type: TokenType::Literal(literal),
             start,
             end,
         }
@@ -108,7 +108,7 @@ impl Token {
 
     fn new_operator(operator: Operator, start: usize, end: usize) -> Self {
         Self {
-            token: TokenType::Operator(operator),
+            token_type: TokenType::Operator(operator),
             start,
             end,
         }
@@ -169,9 +169,10 @@ fn tokenize_seperator(reader: &mut RepeatsNoWhiteSpace) -> Token {
     let seperator = match reader.next() {
         Some('(') => TokenType::LeftParentheses,
         Some(')') => TokenType::RightParentheses,
+        _ => panic!("next char after tokenize_seperator was not a seperator"),
     };
     Token {
-        token: seperator,
+        token_type: seperator,
         start,
         end: start + 1,
     }
@@ -196,6 +197,7 @@ fn tokenize(file: File) -> Vec<Token> {
             '*' => tokenize_operator(&mut reader),
             '/' => tokenize_operator(&mut reader),
             c if c.is_digit(10) => tokenize_integer(&mut reader),
+            _ => panic!("unrecognized character"),
         });
     }
     tokens
@@ -206,13 +208,13 @@ fn infix_to_posfix(tokens: Vec<Token>) -> Vec<Token> {
     let mut posfix: Vec<Token> = Vec::new();
 
     for token in tokens {
-        match token {
-            Token::LeftParentheses => stack.push(token),
-            Token::RightParentheses => {
+        match token.token_type {
+            TokenType::LeftParentheses => stack.push(token),
+            TokenType::RightParentheses => {
                 loop {
                     assert!(stack.len() > 0, "mismatched parentheses");
-                    match stack[stack.len() - 1] {
-                        Token::LeftParentheses => break,
+                    match stack[stack.len() - 1].token_type {
+                        TokenType::LeftParentheses => break,
                         _ => posfix.push(stack.pop().unwrap()),
                     }
                     /* if there is a function token at the top of the operator stack, then:
@@ -220,14 +222,16 @@ fn infix_to_posfix(tokens: Vec<Token>) -> Vec<Token> {
                 }
                 stack.pop();
             }
-            Token::Literal(_) => posfix.push(token),
-            Token::Operator(ref op) => {
+            TokenType::Literal(_) => posfix.push(tkoken),
+            TokenType::Operator(ref op) => {
                 if op.is_unary() {
                     panic!("unary ops not yet implemented")
                 }
                 while stack.len() > 0 {
-                    match &stack[stack.len() - 1] {
-                        Token::Operator(stack_op) if stack_op.precedes(op) == Ordering::Greater => {
+                    match &stack[stack.len() - 1].token_type {
+                        TokenType::Operator(stack_op)
+                            if stack_op.precedes(op) == Ordering::Greater =>
+                        {
                             posfix.push(stack.pop().unwrap())
                         }
                         _ => break,
@@ -238,10 +242,12 @@ fn infix_to_posfix(tokens: Vec<Token>) -> Vec<Token> {
         }
     }
     while stack.len() > 0 {
-        match stack.pop().unwrap() {
-            Token::LeftParentheses => panic!("mismatched parentheses"),
-            t => posfix.push(t),
+        let stack_token = stack.pop().unwrap();
+        match stack_token.token_type {
+            TokenType::LeftParentheses => panic!("mismatched parentheses"),
+            _ => (),
         }
+        posfix.push(stack_token)
     }
     posfix
 }
