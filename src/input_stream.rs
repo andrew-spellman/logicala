@@ -67,26 +67,7 @@ mod tests {
     use super::*;
     use std::fs::{File, OpenOptions};
     use std::io::{Read, Seek, Write};
-
-    fn test_file_from_str(file_name: &str, s: &str) -> File {
-        let mut file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(file_name)
-            .unwrap();
-        file.write_all(s.as_bytes()).unwrap();
-        file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        return file;
-    }
-
-    #[test]
-    fn test_file() {
-        let mut file = test_file_from_str("/tmp/foo0", "bar");
-        let mut buffer = String::new();
-        file.read_to_string(&mut buffer).unwrap();
-        assert_ne!(&mut buffer, "");
-    }
+    use crate::test
 
     #[test]
     fn base_case() {

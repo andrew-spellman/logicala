@@ -1,9 +1,7 @@
-use std::fs::File;
-use std::io::BufRead;
-use std::io::BufReader;
+use std::io::{BufRead, BufReader, Read};
 
 pub struct RepeatsNoWhiteSpace {
-    reader: BufReader<File>,
+    reader: BufReader<Box<dyn Read>>,
     pub current_line: String,
     current_chars: Vec<char>,
     pub line_number: usize,
@@ -11,7 +9,7 @@ pub struct RepeatsNoWhiteSpace {
 }
 
 impl RepeatsNoWhiteSpace {
-    pub fn new(file: File) -> Self {
+    pub fn new(file: Box<dyn Read>) -> Self {
         let reader = BufReader::new(file);
         let current_line = String::new();
         let current_chars = vec![];
@@ -83,91 +81,65 @@ impl Iterator for RepeatsNoWhiteSpace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::{self, File, OpenOptions};
-    use std::io::{Read, Seek, Write};
-
-    fn test_file_from_str(file_name: &str, s: &str) -> File {
-        _ = fs::remove_file(&file_name);
-        let mut file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(file_name)
-            .unwrap();
-        file.write_all(s.as_bytes()).unwrap();
-        file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        return file;
-    }
-
-    #[test]
-    fn test_file() {
-        let path = "/tmp/foo0";
-        let mut file = test_file_from_str(&path, "bar");
-        let mut buffer = String::new();
-        file.read_to_string(&mut buffer).unwrap();
-        assert_ne!(&mut buffer, "");
-    }
+    use crate::test_helpers::file_from_str;
 
     #[test]
     fn base_case() {
-        let path = "/tmp/foo1";
-        let file = test_file_from_str(&path, "bar");
-        let mut stream = RepeatsNoWhiteSpace::new(file);
-        assert_eq!(stream.get(), Some('b'));
-        assert_eq!(stream.next(), Some('b'));
+        let file = file_from_str("bar");
+        let mut reader = RepeatsNoWhiteSpace::new(Box::new(file));
+        assert_eq!(reader.get(), Some('b'));
+        assert_eq!(reader.next(), Some('b'));
 
-        assert_eq!(stream.get(), Some('a'));
-        assert_eq!(stream.next(), Some('a'));
+        assert_eq!(reader.get(), Some('a'));
+        assert_eq!(reader.next(), Some('a'));
 
-        assert_eq!(stream.get(), Some('r'));
-        assert_eq!(stream.next(), Some('r'));
+        assert_eq!(reader.get(), Some('r'));
+        assert_eq!(reader.next(), Some('r'));
 
-        assert_eq!(stream.get(), None);
-        assert_eq!(stream.next(), None);
-        assert_eq!(stream.next(), None);
+        assert_eq!(reader.get(), None);
+        assert_eq!(reader.next(), None);
+        assert_eq!(reader.next(), None);
     }
 
     #[test]
     fn spaces() {
-        let path = "/tmp/foo2";
-        let file = test_file_from_str(&path, "b   ar");
-        let mut stream = RepeatsNoWhiteSpace::new(file);
-        assert_eq!(stream.get(), Some('b'));
-        assert_eq!(stream.next(), Some('b'));
+        let file = file_from_str("b   ar");
+        let mut reader = RepeatsNoWhiteSpace::new(Box::new(file));
+        assert_eq!(reader.get(), Some('b'));
+        assert_eq!(reader.next(), Some('b'));
 
-        assert_eq!(stream.get(), Some(' '));
-        assert_eq!(stream.next(), Some(' '));
+        assert_eq!(reader.get(), Some(' '));
+        assert_eq!(reader.next(), Some(' '));
 
-        assert_eq!(stream.get(), Some('a'));
-        assert_eq!(stream.next(), Some('a'));
+        assert_eq!(reader.get(), Some('a'));
+        assert_eq!(reader.next(), Some('a'));
 
-        assert_eq!(stream.get(), Some('r'));
-        assert_eq!(stream.next(), Some('r'));
+        assert_eq!(reader.get(), Some('r'));
+        assert_eq!(reader.next(), Some('r'));
 
-        assert_eq!(stream.get(), None);
-        assert_eq!(stream.next(), None);
-        assert_eq!(stream.next(), None);
+        assert_eq!(reader.get(), None);
+        assert_eq!(reader.next(), None);
+        assert_eq!(reader.next(), None);
     }
 
     #[test]
     fn new_lines() {
-        let path = "/tmp/foo3";
-        let file = test_file_from_str(&path, "b\n\n\nar");
-        let mut stream = RepeatsNoWhiteSpace::new(file);
-        assert_eq!(stream.get(), Some('b'));
-        assert_eq!(stream.next(), Some('b'));
+        let file = file_from_str("b\n\n\nar");
+        let mut reader = RepeatsNoWhiteSpace::new(Box::new(file));
+        assert_eq!(reader.get(), Some('b'));
+        assert_eq!(reader.next(), Some('b'));
 
-        assert_eq!(stream.get(), Some('\n'));
-        assert_eq!(stream.next(), Some('\n'));
+        assert_eq!(reader.get(), Some('\n'));
+        assert_eq!(reader.next(), Some('\n'));
 
-        assert_eq!(stream.get(), Some('a'));
-        assert_eq!(stream.next(), Some('a'));
+        assert_eq!(reader.get(), Some('a'));
+        assert_eq!(reader.next(), Some('a'));
 
-        assert_eq!(stream.get(), Some('r'));
-        assert_eq!(stream.next(), Some('r'));
+        assert_eq!(reader.get(), Some('r'));
+        assert_eq!(reader.next(), Some('r'));
 
-        assert_eq!(stream.get(), None);
-        assert_eq!(stream.next(), None);
-        assert_eq!(stream.next(), None);
+        assert_eq!(reader.get(), None);
+        assert_eq!(reader.next(), None);
+        assert_eq!(reader.next(), None);
     }
 }

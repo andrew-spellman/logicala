@@ -2,16 +2,15 @@
 
 use crate::repeats_no_whitespace::*;
 use std::cmp::Ordering;
-use std::fs::File;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Literal {
     Z(i32),
     B(bool),
 }
 
 // https://logika.v3.sireum.org/doc/03-language/basic/index.html#operators-and-literals
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Operator {
     Or,
     And,
@@ -82,17 +81,17 @@ impl Operator {
     }
 }
 
-#[derive(Debug)]
-enum TokenType {
+#[derive(Debug, PartialEq)]
+enum TokenKind {
     Literal(Literal),
     Operator(Operator),
     LeftParentheses,
     RightParentheses,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Token {
-    token_type: TokenType,
+    kind: TokenKind,
     start: usize,
     end: usize,
 }
@@ -100,7 +99,7 @@ struct Token {
 impl Token {
     fn new_literal(literal: Literal, start: usize, end: usize) -> Self {
         Self {
-            token_type: TokenType::Literal(literal),
+            kind: TokenKind::Literal(literal),
             start,
             end,
         }
@@ -108,7 +107,7 @@ impl Token {
 
     fn new_operator(operator: Operator, start: usize, end: usize) -> Self {
         Self {
-            token_type: TokenType::Operator(operator),
+            kind: TokenKind::Operator(operator),
             start,
             end,
         }
@@ -150,7 +149,7 @@ fn tokenize_operator(reader: &mut RepeatsNoWhiteSpace) -> Token {
         (Some('!'), Some('=')) => NotEquals,
         (Some('!'), _) => Not,
         (Some('+'), _) => Plus,
-        (Some('-'), _) => Minus,
+        //(Some('-'), _) => Minus, TODO tokenizer should be dumb, the parser will apply negations to integers
         (Some('*'), _) => Multiply,
         (Some('/'), _) => Divide,
         (Some('%'), _) => Modulus,
@@ -166,20 +165,22 @@ fn tokenize_operator(reader: &mut RepeatsNoWhiteSpace) -> Token {
 
 fn tokenize_seperator(reader: &mut RepeatsNoWhiteSpace) -> Token {
     let start = reader.char_index;
-    let seperator = match reader.next() {
-        Some('(') => TokenType::LeftParentheses,
-        Some(')') => TokenType::RightParentheses,
+    match reader.next() {
+        Some('(') => Token {
+            kind: TokenKind::LeftParentheses,
+            start,
+            end: start + 1,
+        },
+        Some(')') => Token {
+            kind: TokenKind::RightParentheses,
+            start,
+            end: start + 1,
+        },
         _ => panic!("next char after tokenize_seperator was not a seperator"),
-    };
-    Token {
-        token_type: seperator,
-        start,
-        end: start + 1,
     }
 }
 
-fn tokenize(file: File) -> Vec<Token> {
-    let mut reader = RepeatsNoWhiteSpace::new(file);
+fn tokenize(mut reader: RepeatsNoWhiteSpace) -> Vec<Token> {
     let mut tokens = Vec::new();
     while let Some(c) = reader.get() {
         tokens.push(match c {
@@ -203,59 +204,56 @@ fn tokenize(file: File) -> Vec<Token> {
     tokens
 }
 
-fn infix_to_posfix(tokens: Vec<Token>) -> Vec<Token> {
-    let mut stack: Vec<Token> = Vec::new();
-    let mut posfix: Vec<Token> = Vec::new();
-
-    for token in tokens {
-        match token.token_type {
-            TokenType::LeftParentheses => stack.push(token),
-            TokenType::RightParentheses => {
-                loop {
-                    assert!(stack.len() > 0, "mismatched parentheses");
-                    match stack[stack.len() - 1].token_type {
-                        TokenType::LeftParentheses => break,
-                        _ => posfix.push(stack.pop().unwrap()),
-                    }
-                    /* if there is a function token at the top of the operator stack, then:
-                    pop the function from the operator stack into the output queue */
-                }
-                stack.pop();
-            }
-            TokenType::Literal(_) => posfix.push(tkoken),
-            TokenType::Operator(ref op) => {
-                if op.is_unary() {
-                    panic!("unary ops not yet implemented")
-                }
-                while stack.len() > 0 {
-                    match &stack[stack.len() - 1].token_type {
-                        TokenType::Operator(stack_op)
-                            if stack_op.precedes(op) == Ordering::Greater =>
-                        {
-                            posfix.push(stack.pop().unwrap())
-                        }
-                        _ => break,
-                    }
-                }
-                stack.push(token);
-            }
-        }
-    }
-    while stack.len() > 0 {
-        let stack_token = stack.pop().unwrap();
-        match stack_token.token_type {
-            TokenType::LeftParentheses => panic!("mismatched parentheses"),
-            _ => (),
-        }
-        posfix.push(stack_token)
-    }
-    posfix
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::repeats_no_whitespace::RepeatsNoWhiteSpace;
+    use crate::test_helpers::file_from_str;
 
     #[test]
-    fn test() {}
+    fn integer() {
+        let file = file_from_str("420");
+        let reader = RepeatsNoWhiteSpace::new(file);
+        assert_eq!(
+            tokenize(reader),
+            [Token::new_literal(Literal::Z(420), 0, 3)]
+        )
+    }
+
+    #[test]
+    fn multiple_integers() {
+        let file = file_from_str("420 69");
+        let reader = RepeatsNoWhiteSpace::new(file);
+        assert_eq!(
+            tokenize(reader),
+            [
+                Token::new_literal(Literal::Z(420), 0, 3),
+                Token::new_literal(Literal::Z(69), 4, 6)
+            ]
+        )
+    }
+
+    #[test]
+    fn operator() {
+        let file = file_from_str("+");
+        let reader = RepeatsNoWhiteSpace::new(file);
+        assert_eq!(
+            tokenize(reader),
+            [Token::new_operator(Operator::Plus, 0, 1)]
+        )
+    }
+
+    #[test]
+    fn integers_and_operators() {
+        let file = file_from_str("420+69");
+        let reader = RepeatsNoWhiteSpace::new(file);
+        assert_eq!(
+            tokenize(reader),
+            [
+                Token::new_literal(Literal::Z(420), 0, 3),
+                Token::new_operator(Operator::Plus, 3, 4),
+                Token::new_literal(Literal::Z(69), 4, 6)
+            ]
+        )
+    }
 }
