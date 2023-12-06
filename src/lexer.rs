@@ -2,6 +2,7 @@
 
 use crate::repeats_no_whitespace::*;
 use std::cmp::Ordering;
+use std::fs::File;
 
 #[derive(Debug)]
 enum Literal {
@@ -68,10 +69,21 @@ impl Operator {
             _ => false,
         }
     }
+
+    fn is_double_width(&self) -> bool {
+        use Operator::*;
+        match self {
+            LessEquals => true,
+            GreaterEquals => true,
+            Equals => true,
+            NotEquals => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug)]
-enum ClaimTokenType {
+enum TokenType {
     Literal(Literal),
     Operator(Operator),
     LeftParentheses,
@@ -79,16 +91,16 @@ enum ClaimTokenType {
 }
 
 #[derive(Debug)]
-struct ClaimToken {
-    token: ClaimTokenType,
+struct Token {
+    token: TokenType,
     start: usize,
     end: usize,
 }
 
-impl ClaimToken {
+impl Token {
     fn new_literal(literal: Literal, start: usize, end: usize) -> Self {
         Self {
-            token: ClaimTokenType::Literal(literal),
+            token: TokenType::Literal(literal),
             start,
             end,
         }
@@ -96,14 +108,14 @@ impl ClaimToken {
 
     fn new_operator(operator: Operator, start: usize, end: usize) -> Self {
         Self {
-            token: ClaimTokenType::Operator(operator),
+            token: TokenType::Operator(operator),
             start,
             end,
         }
     }
 }
 
-fn tokenize_integer(reader: &mut RepeatsNoWhiteSpace) -> ClaimToken {
+fn tokenize_integer(reader: &mut RepeatsNoWhiteSpace) -> Token {
     // TODO handle negative numbers
     let start = reader.char_index;
     loop {
@@ -115,77 +127,92 @@ fn tokenize_integer(reader: &mut RepeatsNoWhiteSpace) -> ClaimToken {
             }
             let slice = &reader.current_line[start..end];
             let z = slice.parse::<i32>().unwrap();
-            return ClaimToken::new_literal(Literal::Z(z), start, end);
+            return Token::new_literal(Literal::Z(z), start, end);
         }
         let _ = reader.next();
     }
 }
 
-fn tokenize_operator(reader: &mut RepeatsNoWhiteSpace) -> ClaimToken {
+fn tokenize_operator(reader: &mut RepeatsNoWhiteSpace) -> Token {
+    use Operator::*;
     let start = reader.char_index;
     let first = reader.next();
     let second = reader.get();
-    ClaimToken::new_operator(
-        match (first, second) {
-            (Some('∨'), _) => Operator::Or,
-            (Some('∧'), _) => Operator::And,
-            (Some('^'), _) => Operator::Less,
-            (Some('<'), Some('=')) => Operator::LessEquals,
-            (Some('<'), _) => Operator::Greater,
-            (Some('>'), Some('=')) => Operator::GreaterEquals,
-            (Some('='), Some('=')) => Operator::Equals,
-            (Some('='), _) => panic!("assignement is not an operator"),
-            (Some('!'), Some('=')) => Operator::NotEquals,
-            (Some('!'), _) => Operator::Not,
-            (Some('+'), _) => Operator::Plus,
-            (Some('-'), _) => Operator::Minus,
-            (Some('*'), _) => Operator::Multiply,
-            (Some('/'), _) => Operator::Divide,
-            (Some('%'), _) => Operator::Modulus,
-            (Some('-'), _) => Operator::Negate,
-            _ => panic!("next char after tokenize_operator was not an operator"),
-        },
-        start,
-        end,
-    )
+    let operator = match (first, second) {
+        (Some('∨'), _) => Or,
+        (Some('∧'), _) => And,
+        (Some('^'), _) => Less,
+        (Some('<'), Some('=')) => LessEquals,
+        (Some('<'), _) => Greater,
+        (Some('>'), Some('=')) => GreaterEquals,
+        (Some('='), Some('=')) => Equals,
+        (Some('='), _) => panic!("assignement is not an operator"),
+        (Some('!'), Some('=')) => NotEquals,
+        (Some('!'), _) => Not,
+        (Some('+'), _) => Plus,
+        (Some('-'), _) => Minus,
+        (Some('*'), _) => Multiply,
+        (Some('/'), _) => Divide,
+        (Some('%'), _) => Modulus,
+        (Some('-'), _) => Negate,
+        _ => panic!("next char after tokenize_operator was not an operator"),
+    };
+    let end = match operator.is_double_width() {
+        false => start + 1,
+        true => start + 2,
+    };
+    Token::new_operator(operator, start, end)
 }
 
-fn tokenize_claim(claim: &str) -> Vec<ClaimToken> {
-    let stream = InputSteam::new();
+fn tokenize_seperator(reader: &mut RepeatsNoWhiteSpace) -> Token {
+    let start = reader.char_index;
+    let seperator = match reader.next() {
+        Some('(') => TokenType::LeftParentheses,
+        Some(')') => TokenType::RightParentheses,
+    };
+    Token {
+        token: seperator,
+        start,
+        end: start + 1,
+    }
+}
+
+fn tokenize(file: File) -> Vec<Token> {
+    let mut reader = RepeatsNoWhiteSpace::new(file);
     let mut tokens = Vec::new();
-    loop {
-        match c {
-            ' ' => (),
-            '(' => tokens.push(ClaimToken::LeftParentheses),
-            ')' => tokens.push(ClaimToken::RightParentheses),
-            '∨' => tokenize_operator(&mut stream),
-            '∧' => tokenize_operator(&mut stream),
-            '^' => tokenize_operator(&mut stream),
-            '+' => tokenize_operator(&mut stream),
-            '-' => tokenize_operator(&mut stream),
-            '*' => tokenize_operator(&mut stream),
-            '/' => tokenize_operator(&mut stream),
-            // this assumes all numbers are single digit and base 10
-            _ => tokens.push(ClaimToken::Literal(Literal::Z(
-                c.to_digit(10).unwrap() as i32
-            ))),
-        }
+    while let Some(c) = reader.get() {
+        tokens.push(match c {
+            ' ' => {
+                reader.next();
+                continue;
+            }
+            '(' => tokenize_seperator(&mut reader),
+            ')' => tokenize_seperator(&mut reader),
+            '∨' => tokenize_operator(&mut reader),
+            '∧' => tokenize_operator(&mut reader),
+            '^' => tokenize_operator(&mut reader),
+            '+' => tokenize_operator(&mut reader),
+            '-' => tokenize_operator(&mut reader),
+            '*' => tokenize_operator(&mut reader),
+            '/' => tokenize_operator(&mut reader),
+            c if c.is_digit(10) => tokenize_integer(&mut reader),
+        });
     }
     tokens
 }
 
-fn infix_to_posfix(tokens: Vec<ClaimToken>) -> Vec<ClaimToken> {
-    let mut stack: Vec<ClaimToken> = Vec::new();
-    let mut posfix: Vec<ClaimToken> = Vec::new();
+fn infix_to_posfix(tokens: Vec<Token>) -> Vec<Token> {
+    let mut stack: Vec<Token> = Vec::new();
+    let mut posfix: Vec<Token> = Vec::new();
 
     for token in tokens {
         match token {
-            ClaimToken::LeftParentheses => stack.push(token),
-            ClaimToken::RightParentheses => {
+            Token::LeftParentheses => stack.push(token),
+            Token::RightParentheses => {
                 loop {
                     assert!(stack.len() > 0, "mismatched parentheses");
                     match stack[stack.len() - 1] {
-                        ClaimToken::LeftParentheses => break,
+                        Token::LeftParentheses => break,
                         _ => posfix.push(stack.pop().unwrap()),
                     }
                     /* if there is a function token at the top of the operator stack, then:
@@ -193,16 +220,14 @@ fn infix_to_posfix(tokens: Vec<ClaimToken>) -> Vec<ClaimToken> {
                 }
                 stack.pop();
             }
-            ClaimToken::Literal(_) => posfix.push(token),
-            ClaimToken::Operator(ref op) => {
+            Token::Literal(_) => posfix.push(token),
+            Token::Operator(ref op) => {
                 if op.is_unary() {
                     panic!("unary ops not yet implemented")
                 }
                 while stack.len() > 0 {
                     match &stack[stack.len() - 1] {
-                        ClaimToken::Operator(stack_op)
-                            if stack_op.precedes(op) == Ordering::Greater =>
-                        {
+                        Token::Operator(stack_op) if stack_op.precedes(op) == Ordering::Greater => {
                             posfix.push(stack.pop().unwrap())
                         }
                         _ => break,
@@ -214,7 +239,7 @@ fn infix_to_posfix(tokens: Vec<ClaimToken>) -> Vec<ClaimToken> {
     }
     while stack.len() > 0 {
         match stack.pop().unwrap() {
-            ClaimToken::LeftParentheses => panic!("mismatched parentheses"),
+            Token::LeftParentheses => panic!("mismatched parentheses"),
             t => posfix.push(t),
         }
     }
