@@ -4,7 +4,7 @@ use crate::repeats_no_whitespace::*;
 use std::cmp::Ordering;
 
 #[derive(Debug, PartialEq)]
-enum TokenKind {
+pub enum TokenKind {
     // Literals
     Z(isize),
     B(bool),
@@ -33,9 +33,9 @@ enum TokenKind {
 
 #[derive(Debug, PartialEq)]
 pub struct Token {
-    kind: TokenKind,
-    start: usize,
-    end: usize,
+    pub kind: TokenKind,
+    pub start: usize,
+    pub end: usize,
 }
 
 impl Token {
@@ -43,7 +43,7 @@ impl Token {
         Self { kind, start, end }
     }
 
-    fn is_operator(&self) -> bool {
+    pub fn is_operator(&self) -> bool {
         use TokenKind::*;
         match self.kind {
             Or => true,
@@ -65,7 +65,7 @@ impl Token {
         }
     }
 
-    pub const fn operator_precedence(&self) -> usize {
+    const fn operator_precedence(&self) -> usize {
         use TokenKind::*;
         match self.kind {
             Or => 0,
@@ -180,7 +180,7 @@ fn tokenize_seperator(reader: &mut RepeatsNoWhiteSpace) -> Token {
     )
 }
 
-fn tokenize(mut reader: RepeatsNoWhiteSpace) -> Vec<Token> {
+pub fn tokenize(mut reader: RepeatsNoWhiteSpace) -> Vec<Token> {
     let mut tokens = Vec::new();
     while let Some(c) = reader.get() {
         tokens.push(match c {
