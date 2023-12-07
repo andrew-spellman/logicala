@@ -10,6 +10,7 @@ enum TokenKind {
     Operator(Operator),
     LeftParentheses,
     RightParentheses,
+    Newline,
 }
 
 #[derive(Debug, PartialEq)]
@@ -99,6 +100,11 @@ fn tokenize_seperator(reader: &mut RepeatsNoWhiteSpace) -> Token {
             start,
             end: start + 1,
         },
+        Some('\n') => Token {
+            kind: TokenKind::Newline,
+            start,
+            end: start + 1,
+        },
         _ => panic!("next char after tokenize_seperator was not a seperator"),
     }
 }
@@ -111,6 +117,7 @@ fn tokenize(mut reader: RepeatsNoWhiteSpace) -> Vec<Token> {
                 reader.next();
                 continue;
             }
+            '\n' => tokenize_seperator(&mut reader),
             '(' => tokenize_seperator(&mut reader),
             ')' => tokenize_seperator(&mut reader),
             '∨' => tokenize_operator(&mut reader),
