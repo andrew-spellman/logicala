@@ -1,11 +1,8 @@
 /*
-
+use crate::justification::Justification;
+use crate::literal::Literal;
+use crate::tokenizer::Token;
 use std::collections::HashMap;
-
-enum Literal {
-    B(bool),
-    Z(i32),
-}
 
 type VarName = String;
 type Expression = Vec<Token>;
@@ -24,17 +21,14 @@ struct Line {
 }
 
 impl Line {
-    fn prove(&self, premises: Vec<Premise>, proven_lines: Vec<Line>) {
-    }
+    fn prove(&self, premises: Vec<Premise>, proven_lines: Vec<Line>) {}
 }
 
-struct Assumption {
-    assume:
-}
+struct Assumption {}
 
 struct ProofBlock {
     premises: Vec<Premise>,
     lines: Vec<Line>,
+    claim: Expression,
 }
-
 */

@@ -14,13 +14,17 @@ enum TokenKind {
 }
 
 #[derive(Debug, PartialEq)]
-struct Token {
+pub struct Token {
     kind: TokenKind,
     start: usize,
     end: usize,
 }
 
 impl Token {
+    fn new(kind: TokenKind, start: usize, end: usize) -> Self {
+        Self { kind, start, end }
+    }
+
     fn new_literal(literal: Literal, start: usize, end: usize) -> Self {
         Self {
             kind: TokenKind::Literal(literal),
@@ -44,16 +48,18 @@ fn tokenize_integer(reader: &mut RepeatsNoWhiteSpace) -> Token {
     loop {
         let next = reader.get();
         if next.is_none() || !next.unwrap().is_digit(10) {
-            let end = reader.char_index;
-            if start == end {
-                panic!("next char after tokenizer_integer call was not an integer");
-            }
-            let slice = &reader.current_line[start..end];
-            let z = slice.parse::<i32>().unwrap();
-            return Token::new_literal(Literal::Z(z), start, end);
+            break;
         }
         let _ = reader.next();
     }
+    let end = reader.char_index;
+    assert_ne!(
+        start, end,
+        "next char after tokenizer_integer call was not an integer"
+    );
+    let slice = &reader.current_line[start..end];
+    let z = slice.parse::<i32>().unwrap();
+    Token::new_literal(Literal::Z(z), start, end)
 }
 
 fn tokenize_operator(reader: &mut RepeatsNoWhiteSpace) -> Token {
@@ -88,25 +94,19 @@ fn tokenize_operator(reader: &mut RepeatsNoWhiteSpace) -> Token {
 }
 
 fn tokenize_seperator(reader: &mut RepeatsNoWhiteSpace) -> Token {
+    use TokenKind::*;
+
     let start = reader.char_index;
-    match reader.next() {
-        Some('(') => Token {
-            kind: TokenKind::LeftParentheses,
-            start,
-            end: start + 1,
+    Token::new(
+        match reader.next() {
+            Some('(') => LeftParentheses,
+            Some(')') => RightParentheses,
+            Some('\n') => Newline,
+            _ => panic!("next char after tokenize_seperator was not a seperator"),
         },
-        Some(')') => Token {
-            kind: TokenKind::RightParentheses,
-            start,
-            end: start + 1,
-        },
-        Some('\n') => Token {
-            kind: TokenKind::Newline,
-            start,
-            end: start + 1,
-        },
-        _ => panic!("next char after tokenize_seperator was not a seperator"),
-    }
+        start,
+        start + 1,
+    )
 }
 
 fn tokenize(mut reader: RepeatsNoWhiteSpace) -> Vec<Token> {
