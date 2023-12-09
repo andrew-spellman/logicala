@@ -31,21 +31,10 @@ pub enum TokenKind {
     RightParentheses,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Token {
-    pub kind: TokenKind,
-    pub start: usize,
-    pub end: usize,
-}
-
-impl Token {
-    fn new(kind: TokenKind, start: usize, end: usize) -> Self {
-        Self { kind, start, end }
-    }
-
+impl TokenKind {
     pub fn is_operator(&self) -> bool {
         use TokenKind::*;
-        match self.kind {
+        match self {
             Or => true,
             And => true,
             Less => true,
@@ -67,7 +56,7 @@ impl Token {
 
     const fn operator_precedence(&self) -> usize {
         use TokenKind::*;
-        match self.kind {
+        match self {
             Or => 0,
             And => 1,
             Less => 2,
@@ -98,7 +87,7 @@ impl Token {
 
     pub fn is_unary(&self) -> bool {
         use TokenKind::*;
-        match self.kind {
+        match self {
             Not => true,
             Negate => true,
             _ => false,
@@ -107,13 +96,26 @@ impl Token {
 
     pub fn is_double_width(&self) -> bool {
         use TokenKind::*;
-        match self.kind {
+        match self {
             LessEquals => true,
             GreaterEquals => true,
             Equals => true,
             NotEquals => true,
             _ => false,
         }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub start: usize,
+    pub end: usize,
+}
+
+impl Token {
+    fn new(kind: TokenKind, start: usize, end: usize) -> Self {
+        Self { kind, start, end }
     }
 }
 

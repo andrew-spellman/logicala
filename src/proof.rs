@@ -1,23 +1,8 @@
 #![allow(dead_code)]
 
 use crate::justification::Justification;
-use crate::tokenizer::{Token, TokenKind};
-
-type Expression = Vec<Token>;
-
-fn last_position_of_token_kind_in_expression(expression: &Expression, kind: &TokenKind) -> usize {
-    expression.len()
-        - 1
-        - expression
-            .iter()
-            .rev()
-            .position(|token| &token.kind == kind)
-            .expect("cannot justify claim without any And operators using And Intoduction")
-}
-
-fn expression_in_vec(expressions: &Vec<Expression>, expression: &Expression) -> bool {
-    expressions.iter().find(|exp| exp == &expression).is_some()
-}
+use crate::parser::{expression_in_vec, Expression};
+use crate::tokenizer::TokenKind;
 
 fn find_step_by_number<'a>(steps: &'a Vec<ProofStep>, step_number: usize) -> &'a ProofStep {
     steps
@@ -39,8 +24,9 @@ impl ProofStep {
         self.proven = match self.justification {
             Premise => expression_in_vec(&premises, &self.claim),
             AndIntroduction(first_step_number, second_step_number) => {
-                let and_index =
-                    last_position_of_token_kind_in_expression(&self.claim, &TokenKind::And);
+                let and_index = &self
+                    .claim
+                    .last_position_of_token_kind_in_expression(&TokenKind::And);
                 let first_step = find_step_by_number(&previous_steps, first_step_number);
                 let second_step = find_step_by_number(&previous_steps, second_step_number);
                 // TODO slice claim into two arguements using and_index and compare to first_step and second_step

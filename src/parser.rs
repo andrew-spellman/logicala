@@ -1,15 +1,76 @@
+use crate::tokenizer::{Token, TokenKind};
+use std::cmp::Ordering;
+
+#[derive(Debug, PartialEq)]
+pub struct Expression {
+    tokens: Vec<Token>,
+}
+
+struct ExpressionIterator<'a> {
+    iter: std::slice::Iter<'a, Token>,
+}
+
+impl<'a> Iterator for ExpressionIterator<'a> {
+    type Item = &'a Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+impl<'a> DoubleEndedIterator for ExpressionIterator<'a> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back()
+    }
+}
+
+impl Expression {
+    fn iter(&self) -> ExpressionIterator {
+        ExpressionIterator {
+            iter: self.tokens.iter(),
+        }
+    }
+
+    pub fn last_position_of_token_kind_in_expression(&self, kind: &TokenKind) -> usize {
+        self.tokens.len()
+            - 1
+            - self
+                .tokens
+                .iter()
+                .rev()
+                .position(|token| &token.kind == kind)
+                .expect("cannot justify claim without any And operators using And Intoduction")
+    }
+
+    pub fn operands_of_operator_at_index(&self, operator_index: usize) {
+        if operator_index > self.tokens.len() - 1 {
+            panic!("operator_index out of bounds of token vec");
+        }
+        let operand = self.tokens.get(operator_index).unwrap();
+        if !operand.kind.is_operator() {
+            panic!("token at operator_index as not an operator");
+        }
+        let before_operator = &self.tokens[0..operator_index];
+        let sub_expression: Vec<Expression>;
+    }
+}
+
+pub fn expression_in_vec(expressions: &Vec<Expression>, expression: &Expression) -> bool {
+    expressions.iter().find(|exp| exp == &expression).is_some()
+}
+
 fn infix_to_posfix(tokens: Vec<Token>) -> Vec<Token> {
     let mut stack: Vec<Token> = Vec::new();
     let mut posfix: Vec<Token> = Vec::new();
 
     for token in tokens {
-        match token.token_type {
-            TokenType::LeftParentheses => stack.push(token),
-            TokenType::RightParentheses => {
+        match token.kind {
+            TokenKind::LeftParentheses => stack.push(token),
+            TokenKind::RightParentheses => {
                 loop {
                     assert!(stack.len() > 0, "mismatched parentheses");
-                    match stack[stack.len() - 1].token_type {
-                        TokenType::LeftParentheses => break,
+                    match stack[stack.len() - 1].kind {
+                        TokenKind::LeftParentheses => break,
                         _ => posfix.push(stack.pop().unwrap()),
                     }
                     /* if there is a function token at the top of the operator stack, then:
@@ -17,15 +78,17 @@ fn infix_to_posfix(tokens: Vec<Token>) -> Vec<Token> {
                 }
                 stack.pop();
             }
-            TokenType::Literal(_) => posfix.push(tkoken),
-            TokenType::Operator(ref op) => {
-                if op.is_unary() {
+            TokenKind::Z(_) => posfix.push(token),
+            TokenKind::B(_) => posfix.push(token),
+            kind if kind.is_operator() => {
+                if kind.is_unary() {
                     panic!("unary ops not yet implemented")
                 }
                 while stack.len() > 0 {
-                    match &stack[stack.len() - 1].token_type {
-                        TokenType::Operator(stack_op)
-                            if stack_op.precedes(op) == Ordering::Greater =>
+                    match &stack[stack.len() - 1].kind {
+                        stack_op_kind
+                            if stack_op_kind.is_operator()
+                                && stack_op_kind.precedes(&kind) == Ordering::Greater =>
                         {
                             posfix.push(stack.pop().unwrap())
                         }
@@ -34,12 +97,13 @@ fn infix_to_posfix(tokens: Vec<Token>) -> Vec<Token> {
                 }
                 stack.push(token);
             }
+            _ => panic!("not done yet"), // TODO: infix to posfix other types
         }
     }
     while stack.len() > 0 {
         let stack_token = stack.pop().unwrap();
-        match stack_token.token_type {
-            TokenType::LeftParentheses => panic!("mismatched parentheses"),
+        match stack_token.kind {
+            TokenKind::LeftParentheses => panic!("mismatched parentheses"),
             _ => (),
         }
         posfix.push(stack_token)
