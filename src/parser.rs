@@ -1,34 +1,14 @@
 use crate::tokenizer::{Token, TokenKind};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, slice::Iter};
 
 #[derive(Debug, PartialEq)]
 pub struct Expression {
     tokens: Vec<Token>,
 }
 
-struct ExpressionIterator<'a> {
-    iter: std::slice::Iter<'a, Token>,
-}
-
-impl<'a> Iterator for ExpressionIterator<'a> {
-    type Item = &'a Token;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
-
-impl<'a> DoubleEndedIterator for ExpressionIterator<'a> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.iter.next_back()
-    }
-}
-
 impl Expression {
-    fn iter(&self) -> ExpressionIterator {
-        ExpressionIterator {
-            iter: self.tokens.iter(),
-        }
+    fn iter(&self) -> Iter<'_, Token> {
+        self.tokens.iter()
     }
 
     pub fn last_position_of_token_kind_in_expression(&self, kind: &TokenKind) -> usize {
@@ -80,7 +60,7 @@ fn infix_to_posfix(tokens: Vec<Token>) -> Vec<Token> {
             }
             TokenKind::Z(_) => posfix.push(token),
             TokenKind::B(_) => posfix.push(token),
-            kind if kind.is_operator() => {
+            ref kind if kind.is_operator() => {
                 if kind.is_unary() {
                     panic!("unary ops not yet implemented")
                 }
