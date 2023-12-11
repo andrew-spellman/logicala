@@ -15,7 +15,6 @@ impl Expression {
         self.tokens.len()
             - 1
             - self
-                .tokens
                 .iter()
                 .rev()
                 .position(|token| &token.kind == kind)
@@ -32,6 +31,7 @@ impl Expression {
         }
         let before_operator = &self.tokens[0..operator_index];
         let sub_expression: Vec<Expression>;
+        // TODO: bottom up parsing
     }
 }
 
