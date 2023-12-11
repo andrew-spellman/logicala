@@ -50,18 +50,6 @@ fn parse_claim(reader: &mut RepeatsNoWhiteSpace) -> Option<propositional::Claim>
     None
 }
 
-enum ClaimToken {
-    TrueLiteral,
-    FalseLiteral,
-    Negation,
-    Conjunction,
-    Disjunction,
-    Implication,
-    LeftParenthese,
-    RightParenthese,
-    Identifier(String),
-}
-
 fn tokenize_claim(reader: &mut RepeatsNoWhiteSpace) -> Vec<ClaimToken> {
     use ClaimToken::*;
     let mut tokens = Vec::new();

@@ -1,12 +1,114 @@
-pub enum Claim {
-    TrueLiteral,
-    FalseLiteral,
-    Identifier(String),
-    Parenthesized(Box<Claim>),
-    Negation(Box<Claim>),
-    Conjunction(Box<Claim>),
-    DisJunction(Box<Claim>),
-    Implication(Box<Claim>),
+pub enum ValueKind {
+    Bool,
+}
+
+pub struct Identifier {
+    id: String,
+    kind: ValueKind,
+}
+
+pub enum ClaimToken {
+    BoolLiteral(bool),
+    Identifier(Identifier),
+    LeftParenthese,
+    RightParenthese,
+    Implication,
+    Disjunction,
+    Conjunction,
+    Negation,
+}
+
+impl ClaimToken {
+    fn is_value(&self) -> bool {
+        use ClaimToken::*;
+        match self {
+            BoolLiteral(_) | Identifier(_) => true,
+            LeftParenthese | RightParenthese | Implication | Disjunction | Conjunction
+            | Negation => false,
+        }
+    }
+
+    fn is_operator(&self) -> bool {
+        use ClaimToken::*;
+        match self {
+            Implication | Disjunction | Conjunction | Negation => true,
+            BoolLiteral(_) | Identifier(_) | LeftParenthese | RightParenthese => false,
+        }
+    }
+
+    fn is_unary_operator(&self) -> bool {
+        use ClaimToken::*;
+        match self {
+            Negation => true,
+            BoolLiteral(_) | Identifier(_) | LeftParenthese | RightParenthese | Implication
+            | Disjunction | Conjunction => false,
+        }
+    }
+
+    fn is_binary_operator(&self) -> bool {
+        use ClaimToken::*;
+        match self {
+            Implication | Disjunction | Conjunction => true,
+            BoolLiteral(_) | Identifier(_) | LeftParenthese | RightParenthese | Negation => false,
+        }
+    }
+
+    fn precedence(&self) -> usize {
+        use ClaimToken::*;
+        match self {
+            BoolLiteral(_) | Identifier(_) | LeftParenthese | RightParenthese => 0,
+            Implication => 1,
+            Disjunction => 2,
+            Conjunction => 3,
+            Negation => 4,
+        }
+    }
+}
+
+pub struct Claim {
+    tokens: Vec<ClaimToken>,
+}
+
+impl Claim {
+    pub fn from_tokens(tokens: Vec<ClaimToken>) -> Self {
+        use ClaimToken::*;
+        let mut posfix = Vec::new();
+        let mut operator_stack: Vec<ClaimToken> = Vec::new();
+        for token in tokens {
+            match token {
+                token if token.is_value() => posfix.push(token),
+
+                token if token.is_operator() => {
+                    while match operator_stack.last() {
+                        Some(operator) => operator.precedence() > token.precedence(),
+                        None => false,
+                    } {
+                        posfix.push(operator_stack.pop().unwrap());
+                    }
+                    operator_stack.push(token);
+                }
+
+                LeftParenthese => operator_stack.push(token),
+                RightParenthese => loop {
+                    match operator_stack.last() {
+                        Some(LeftParenthese) => {
+                            _ = operator_stack.pop().unwrap();
+                            break;
+                        }
+                        Some(_) => posfix.push(operator_stack.pop().unwrap()),
+                        None => panic!("unmatched right parethese"),
+                    }
+                },
+
+                BoolLiteral(_) | Identifier(_) | Negation | Disjunction | Conjunction
+                | Implication => unreachable!(),
+            }
+        }
+
+        // TODO: make certain posfix evaluates to a bool
+
+        Self { tokens: posfix }
+    }
 }
 
 struct RegularStepNumber(usize);
