@@ -1,12 +1,15 @@
-pub enum ValueKind {
+#[derive(Debug, Clone, PartialEq)]
+pub enum Kind {
     Bool,
 }
 
+#[derive(Clone)]
 pub struct Identifier {
-    id: String,
-    kind: ValueKind,
+    pub id: String,
+    pub kind: Kind,
 }
 
+#[derive(Clone)]
 pub enum ClaimToken {
     BoolLiteral(bool),
     Identifier(Identifier),
@@ -36,20 +39,22 @@ impl ClaimToken {
         }
     }
 
-    fn is_unary_operator(&self) -> bool {
+    fn operand_kinds(&self) -> Vec<Kind> {
         use ClaimToken::*;
         match self {
-            Negation => true,
-            BoolLiteral(_) | Identifier(_) | LeftParenthese | RightParenthese | Implication
-            | Disjunction | Conjunction => false,
+            BoolLiteral(_) | Identifier(_) | LeftParenthese | RightParenthese => vec![],
+            Negation => vec![Kind::Bool],
+            Implication | Disjunction | Conjunction => {
+                vec![Kind::Bool, Kind::Bool]
+            }
         }
     }
 
-    fn is_binary_operator(&self) -> bool {
+    fn operator_result_kind(&self) -> Option<Kind> {
         use ClaimToken::*;
         match self {
-            Implication | Disjunction | Conjunction => true,
-            BoolLiteral(_) | Identifier(_) | LeftParenthese | RightParenthese | Negation => false,
+            BoolLiteral(_) | Identifier(_) | LeftParenthese | RightParenthese => None,
+            Negation | Implication | Disjunction | Conjunction => Some(Kind::Bool),
         }
     }
 
@@ -65,14 +70,14 @@ impl ClaimToken {
     }
 }
 
-pub struct Claim {
+struct Posfix {
     tokens: Vec<ClaimToken>,
 }
 
-impl Claim {
-    pub fn from_tokens(tokens: Vec<ClaimToken>) -> Self {
+impl Posfix {
+    fn from_tokens(tokens: Vec<ClaimToken>) -> Vec<ClaimToken> {
         use ClaimToken::*;
-        let mut posfix = Vec::new();
+        let mut posfix: Vec<ClaimToken> = Vec::new();
         let mut operator_stack: Vec<ClaimToken> = Vec::new();
         for token in tokens {
             match token {
@@ -89,6 +94,7 @@ impl Claim {
                 }
 
                 LeftParenthese => operator_stack.push(token),
+
                 RightParenthese => loop {
                     match operator_stack.last() {
                         Some(LeftParenthese) => {
@@ -104,10 +110,99 @@ impl Claim {
                 | Implication => unreachable!(),
             }
         }
+        posfix
+    }
+}
 
-        // TODO: make certain posfix evaluates to a bool
+pub struct Claim {
+    tokens: Vec<ClaimToken>,
+    kind: Kind,
+}
 
-        Self { tokens: posfix }
+impl Claim {
+    pub fn from_posfix(posfix: Posfix) -> Self {
+        assert!(Self::evaluate_kind(&posfix));
+        Self {
+            tokens: posfix.tokens,
+            kind: Kind::Bool,
+        }
+    }
+
+    fn evaluate_kind(posfix: &Posfix) -> bool {
+        use ClaimToken::*;
+
+        enum TokenOrExpression<'a> {
+            Token(&'a ClaimToken),
+            Expression(Expression<'a>),
+        }
+
+        struct Expression<'a> {
+            tokens: Vec<TokenOrExpression<'a>>,
+            kind: Kind,
+        }
+
+        let mut tokens_or_expressions: Vec<TokenOrExpression> = posfix
+            .tokens
+            .iter()
+            .map(|token| TokenOrExpression::Token(token))
+            .collect();
+
+        loop {
+            let Some((first_operator, operator_index)) = tokens_or_expressions
+                .iter()
+                .enumerate()
+                .find_map(|x| match x {
+                    (index, TokenOrExpression::Token(token)) if token.is_operator() => {
+                        Some((token.clone(), index))
+                    }
+                    _ => None,
+                })
+            else {
+                break;
+            };
+
+            let expected_operand_kinds = first_operator.operand_kinds();
+
+            let operand_count = expected_operand_kinds.len();
+            if operator_index < operand_count - 1 {
+                panic!("operator missing operands");
+            }
+
+            let start_index = operator_index - operand_count;
+
+            for (index, expected_kind) in expected_operand_kinds.iter().enumerate() {
+                let found_kind = match &tokens_or_expressions[start_index + index] {
+                    TokenOrExpression::Token(token) if token.is_value() => match token {
+                        BoolLiteral(_) => &Kind::Bool,
+                        Identifier(identifier) => &identifier.kind,
+                        LeftParenthese | RightParenthese | Implication | Disjunction
+                        | Conjunction | Negation => unreachable!(),
+                    },
+                    TokenOrExpression::Expression(exp) => &exp.kind,
+                    TokenOrExpression::Token(_) => unreachable!(),
+                };
+                if found_kind != expected_kind {
+                    panic!(
+                        "found kind {:?}, expected kind {:?}",
+                        found_kind, expected_kind
+                    );
+                }
+            }
+            let new_expression_tokens_or_expressions = (0..operand_count + 1)
+                .map(|_| tokens_or_expressions.remove(start_index))
+                .collect();
+            let Some(result_kind) = first_operator.operator_result_kind() else {
+                panic!();
+            };
+            let new_expression = Expression {
+                tokens: new_expression_tokens_or_expressions,
+                kind: result_kind,
+            };
+            tokens_or_expressions
+                .insert(start_index, TokenOrExpression::Expression(new_expression));
+        }
+
+        false
     }
 }
 

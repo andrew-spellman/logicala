@@ -25,8 +25,8 @@ fn parse_propositional(file: File) {
     };
 }
 
-fn parse_sequent(reader: &mut RepeatsNoWhiteSpace) -> Option<propositional::Sequent> {
-    let premises: Vec<propositional::Claim> = Vec::new();
+fn parse_sequent(mut reader: &mut RepeatsNoWhiteSpace) -> Option<propositional::Sequent> {
+    let mut premises: Vec<propositional::Claim> = Vec::new();
     let conclusions: Vec<propositional::Claim> = Vec::new();
 
     while match reader.get() {
@@ -34,10 +34,10 @@ fn parse_sequent(reader: &mut RepeatsNoWhiteSpace) -> Option<propositional::Sequ
         Some('{') => panic!("expected sequent"),
         _ => true,
     } {
-        premises.push(parse_claim(&mut reader));
+        premises.push(parse_claim(&mut reader).unwrap()); // TODO: handle this unwrap
     }
 
-    todo!("conclusions")
+    // TODO: conclusions;
 
     Some(propositional::Sequent {
         premises,
@@ -46,21 +46,21 @@ fn parse_sequent(reader: &mut RepeatsNoWhiteSpace) -> Option<propositional::Sequ
 }
 
 fn parse_claim(reader: &mut RepeatsNoWhiteSpace) -> Option<propositional::Claim> {
-    use propositional::Claim::*;
+    use propositional::Claim;
     None
 }
 
-fn tokenize_claim(reader: &mut RepeatsNoWhiteSpace) -> Vec<ClaimToken> {
-    use ClaimToken::*;
+fn tokenize_claim(mut reader: &mut RepeatsNoWhiteSpace) -> Vec<propositional::ClaimToken> {
+    use propositional::ClaimToken::*;
     let mut tokens = Vec::new();
     loop {
         match reader.get() {
             Some('⊤') => {
-                tokens.push(TrueLiteral);
+                tokens.push(BoolLiteral(true));
                 reader.next();
             }
             Some('⊥') => {
-                tokens.push(FalseLiteral);
+                tokens.push(BoolLiteral(false));
                 reader.next();
             }
             Some('¬') => {
@@ -88,9 +88,12 @@ fn tokenize_claim(reader: &mut RepeatsNoWhiteSpace) -> Vec<ClaimToken> {
                 reader.next();
             }
             Some(c) if c.is_ascii_alphabetic() => {
-                let id = Identifier(parse_ascii_alphabetic(&mut reader));
+                let id = Identifier(propositional::Identifier {
+                    id: parse_ascii_alphabetic(&mut reader),
+                    kind: propositional::Kind::Bool,
+                }); // TODO handle issue where type is unknown at tokenize stage
             }
-            todo!("error cases")
+            _ => todo!("error cases"),
         }
     }
 }
