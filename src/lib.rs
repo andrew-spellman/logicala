@@ -1,10 +1,3 @@
-pub mod ad_hoc_propositional_parser;
-pub mod justification;
-pub mod literal;
-pub mod operator;
-pub mod parser;
-pub mod proof;
+pub mod lexer;
 pub mod propositional;
-pub mod repeats_no_whitespace;
 pub mod test_helpers;
-pub mod tokenizer;
