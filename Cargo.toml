@@ -4,5 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+expect-test = "1.4.1"
 logos = "0.13.0"
+num-derive = "0.4.1"
+num-traits = "0.2.17"
+rowan = "0.15.15"
 vfs = "0.10.0"

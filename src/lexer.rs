@@ -1,7 +1,10 @@
 use logos::Logos;
+use num_derive::{FromPrimitive, ToPrimitive};
 
-#[derive(Logos, Debug, PartialEq)]
-enum Token {
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Logos, FromPrimitive, ToPrimitive,
+)]
+pub enum SyntaxKind {
     #[regex(" +")]
     WhiteSpace,
 
@@ -74,6 +77,8 @@ enum Token {
     ContradictionElimination,
     #[token("pbc")]
     ProofByContradiction,
+
+    Root,
 }
 
 #[cfg(test)]
@@ -81,8 +86,8 @@ mod tests {
     use super::*;
 
     fn assert_token(
-        lex: &mut logos::Lexer<Token>,
-        token: Token,
+        lex: &mut logos::Lexer<SyntaxKind>,
+        token: SyntaxKind,
         span: std::ops::Range<usize>,
         slice: &str,
     ) {
@@ -93,28 +98,28 @@ mod tests {
 
     #[test]
     fn propositional() {
-        let mut lex = Token::lexer("p, q ⊢ q\n{\n  13. q   premise\n}");
+        let mut lex = SyntaxKind::lexer("p, q ⊢ q\n{\n  13. q   premise\n}");
 
-        assert_token(&mut lex, Token::Identifier, 0..1, "p");
-        assert_token(&mut lex, Token::Comma, 1..2, ",");
-        assert_token(&mut lex, Token::WhiteSpace, 2..3, " ");
-        assert_token(&mut lex, Token::Identifier, 3..4, "q");
-        assert_token(&mut lex, Token::WhiteSpace, 4..5, " ");
-        assert_token(&mut lex, Token::Turnstile, 5..8, "⊢");
-        assert_token(&mut lex, Token::WhiteSpace, 8..9, " ");
-        assert_token(&mut lex, Token::Identifier, 9..10, "q");
-        assert_token(&mut lex, Token::Newline, 10..11, "\n");
-        assert_token(&mut lex, Token::LeftBrace, 11..12, "{");
-        assert_token(&mut lex, Token::Newline, 12..13, "\n");
-        assert_token(&mut lex, Token::WhiteSpace, 13..15, "  ");
-        assert_token(&mut lex, Token::Integer, 15..17, "13");
-        assert_token(&mut lex, Token::Period, 17..18, ".");
-        assert_token(&mut lex, Token::WhiteSpace, 18..19, " ");
-        assert_token(&mut lex, Token::Identifier, 19..20, "q");
-        assert_token(&mut lex, Token::WhiteSpace, 20..23, "   ");
-        assert_token(&mut lex, Token::Premise, 23..30, "premise");
-        assert_token(&mut lex, Token::Newline, 30..31, "\n");
-        assert_token(&mut lex, Token::RightBrace, 31..32, "}");
+        assert_token(&mut lex, SyntaxKind::Identifier, 0..1, "p");
+        assert_token(&mut lex, SyntaxKind::Comma, 1..2, ",");
+        assert_token(&mut lex, SyntaxKind::WhiteSpace, 2..3, " ");
+        assert_token(&mut lex, SyntaxKind::Identifier, 3..4, "q");
+        assert_token(&mut lex, SyntaxKind::WhiteSpace, 4..5, " ");
+        assert_token(&mut lex, SyntaxKind::Turnstile, 5..8, "⊢");
+        assert_token(&mut lex, SyntaxKind::WhiteSpace, 8..9, " ");
+        assert_token(&mut lex, SyntaxKind::Identifier, 9..10, "q");
+        assert_token(&mut lex, SyntaxKind::Newline, 10..11, "\n");
+        assert_token(&mut lex, SyntaxKind::LeftBrace, 11..12, "{");
+        assert_token(&mut lex, SyntaxKind::Newline, 12..13, "\n");
+        assert_token(&mut lex, SyntaxKind::WhiteSpace, 13..15, "  ");
+        assert_token(&mut lex, SyntaxKind::Integer, 15..17, "13");
+        assert_token(&mut lex, SyntaxKind::Period, 17..18, ".");
+        assert_token(&mut lex, SyntaxKind::WhiteSpace, 18..19, " ");
+        assert_token(&mut lex, SyntaxKind::Identifier, 19..20, "q");
+        assert_token(&mut lex, SyntaxKind::WhiteSpace, 20..23, "   ");
+        assert_token(&mut lex, SyntaxKind::Premise, 23..30, "premise");
+        assert_token(&mut lex, SyntaxKind::Newline, 30..31, "\n");
+        assert_token(&mut lex, SyntaxKind::RightBrace, 31..32, "}");
         assert_eq!(lex.next(), None);
         assert_eq!(lex.span(), 32..32);
         assert_eq!(lex.slice(), "");
