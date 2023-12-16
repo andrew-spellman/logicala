@@ -37,15 +37,22 @@ struct AssumeStep {
     claim: Claim,
 }
 
+enum Op {
+    Conjunction,
+    Disjunction,
+    Implication,
+}
+
 enum Claim {
     TrueLiteral,
     FalseLiteral,
     Identifier,
-    Parenthesized(Box<Claim>),
     Negation(Box<Claim>),
-    Conjunction(Box<Claim>, Box<Claim>),
-    Disjunction(Box<Claim>, Box<Claim>),
-    Implication(Box<Claim>, Box<Claim>),
+    BinOp {
+        lhs: Box<Claim>,
+        op: Op,
+        rhs: Box<Claim>,
+    },
 }
 
 enum Justification {

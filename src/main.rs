@@ -1,10 +1,6 @@
 mod lexer;
-mod parser;
 mod propositional;
-mod syntax;
 mod test_helpers;
-
-use parser::Parser;
 
 use std::env::args;
 use std::fs;
@@ -18,6 +14,5 @@ fn main() {
         println!("logicala: {}: No such file or directory", source_path);
         return;
     };
-    let parse = Parser::new(&source).parse();
-    println!("{}", parse.debug_tree());
+    println!("{}", source);
 }
