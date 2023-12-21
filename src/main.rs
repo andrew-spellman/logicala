@@ -1,5 +1,6 @@
 mod parser;
 mod propositional;
+mod verify;
 //mod test_helpers;
 
 use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation};
